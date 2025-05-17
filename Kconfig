@@ -1,0 +1,50 @@
+# Sensor data simulator
+#
+# Copyright (c) 2019 Nordic Semiconductor
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+menuconfig PAW3395
+  bool "PAW3395 mouse optical sensor"
+  select SPI
+  depends on INPUT
+  depends on DT_HAS_PIXART_PAW3395_ENABLED
+  help
+      Enable PAW3395 mouse optical sensor.
+
+if PAW3395
+
+config INPUT_PAW3395_INIT_PRIORITY
+    int "PAW3395 initialization priority"
+    default INPUT_INIT_PRIORITY
+
+config PAW3395_SWAP_XY
+  bool "Swap the X/Y axis of PAW3395 sensor"
+
+config PAW3395_INVERT_X
+  bool "Invert the X axis of PAW3395 sensor"
+
+config PAW3395_INVERT_Y
+  bool "Invert the Y axis of PAW3395 sensor"
+
+config PAW3395_INIT_POWER_UP_EXTRA_DELAY_MS
+  int "Extra power up init delay (ms)"
+  default 0
+  help
+    Default minimum init power up delay is 10ms.
+    Use this config to postpone init power up sequence if needs longer bootup time.
+
+config PAW3395_REPORT_INTERVAL_MIN
+	int "PAW3395's default minimum report rate"
+	default 0
+	help
+	  Default minimum report interval in milliseconds.
+		Slow down input reporting for hid queue over the air.
+		Turn value down to 8ms to get sharp response if use with USB only.
+
+module = PAW3395
+module-str = PAW3395
+source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
+
+endif #PAW3395

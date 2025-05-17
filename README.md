@@ -37,15 +37,15 @@ Update `board.overlay` adding the necessary bits (update the pins for your board
 	spi2_default: spi2_default {
 		group1 {
 			psels = <NRF_PSEL(SPIM_SCK, 1, 13)>,
-							<NRF_PSEL(SPIM_MOSI, 1, 15)>,
-							<NRF_PSEL(SPIM_MISO, 1, 14)>;
+			<NRF_PSEL(SPIM_MOSI, 1, 15)>,
+			<NRF_PSEL(SPIM_MISO, 1, 14)>;
 		};
 	};
 	spi2_sleep: spi2_sleep {
 		group1 {
 			psels = <NRF_PSEL(SPIM_SCK, 1, 13)>,
-							<NRF_PSEL(SPIM_MOSI, 1, 15)>,
-							<NRF_PSEL(SPIM_MISO, 1, 14)>;
+			<NRF_PSEL(SPIM_MOSI, 1, 15)>,
+			<NRF_PSEL(SPIM_MISO, 1, 14)>;
 			low-power-enable;
 		};
 	};

@@ -31,7 +31,8 @@ int paw3395_lib_clear_motion_pin_state(struct spi_dt_spec spi, struct gpio_dt_sp
 int paw3395_lib_motion_burst_read(struct spi_dt_spec spi, struct gpio_dt_spec cs_gpio,
                                   uint8_t *buf, size_t burst_size);
 int paw3395_lib_set_cpi(struct spi_dt_spec spi, struct gpio_dt_spec cs_gpio, uint32_t cpi);
-
+int paw3395_lib_set_performance(struct spi_dt_spec spi, struct gpio_dt_spec cs_gpio, 
+                                bool enable);
 // weak linked reference logger
 extern void paw3395_lib_log_err(const char *fmt, ...);
 extern void paw3395_lib_log_inf(const char *fmt, ...);

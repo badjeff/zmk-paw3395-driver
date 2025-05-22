@@ -59,8 +59,8 @@ enum async_init_step {
 // - Since MCU is not involved in the sensor init process, i is allowed to do other tasks.
 //   Thus, k_sleep or delayed schedule can be used.
 static const int32_t async_init_delay[ASYNC_INIT_STEP_COUNT] = {
-    [ASYNC_INIT_STEP_POWER_UP] = 100 + CONFIG_PAW3395_INIT_POWER_UP_EXTRA_DELAY_MS,
-    [ASYNC_INIT_STEP_FW_LOAD_START] = 100,
+    [ASYNC_INIT_STEP_POWER_UP] = 50 + CONFIG_PAW3395_INIT_POWER_UP_EXTRA_DELAY_MS,
+    [ASYNC_INIT_STEP_FW_LOAD_START] = 5,
     [ASYNC_INIT_STEP_CONFIGURE] = 1,
 };
 
@@ -81,54 +81,66 @@ static int paw3395_async_init_fw_load(const struct device *dev) {
     const struct pixart_config *config = dev->config;
 
     // verify product id before upload power-up initialization settings
-    LOG_DBG("call paw3395_lib_verify_product_id()");
     err = paw3395_lib_verify_product_id(config->spi, config->cs_gpio);
     if (err) {
         LOG_ERR("Cannot exec paw3395_lib_verify_product_id");
         return -EIO;
     }
-    LOG_DBG("product id verified");
+    LOG_INF("product id verified");
 
-    LOG_DBG("call paw3395_lib_power_up_init_regs()");
     err = paw3395_lib_power_up_init_regs(config->spi, config->cs_gpio);
     if (err) {
         LOG_ERR("Cannot exec paw3395_lib_power_up_init_regs");
         return err;
     }
-    LOG_DBG("power up init done");
+    LOG_INF("power up init regs done");
     
-    LOG_DBG("call paw3395_lib_clear_motion_pin_state()");
     err = paw3395_lib_clear_motion_pin_state(config->spi, config->cs_gpio);
     if (err) {
         LOG_ERR("Cannot exec paw3395_lib_clear_motion_pin_state");
         return err;
     }
-    LOG_DBG("clear motion pin state");
+    LOG_INF("clear motion pin state");
 
     return err;
 }
 
-static void set_interrupt(const struct device *dev, const bool en) {
+static int paw3395_set_performance(const struct device *dev, bool enabled) {
+    const struct pixart_config *config = dev->config;
+    int err = 0;
+
+    if (config->force_awake) {
+        err = paw3395_lib_set_performance(config->spi, config->cs_gpio, enabled);
+        if (err) {
+            LOG_ERR("Cannot exec paw3395_lib_set_performance");
+            return err;
+        }
+        LOG_INF("%s performance mode", enabled ? "enable" : "disable");
+    }
+
+    return err;
+}
+
+static int paw3395_set_interrupt(const struct device *dev, const bool en) {
     const struct pixart_config *config = dev->config;
     int ret = gpio_pin_interrupt_configure_dt(&config->irq_gpio,
                                               en ? GPIO_INT_LEVEL_ACTIVE : GPIO_INT_DISABLE);
     if (ret < 0) {
-        LOG_ERR("Cannot set interrupt: %s", en ? "ENABLE" : "DISABLE");
+        LOG_ERR("can't set interrupt");
     }
-    // else LOG_DBG("set interrupt: %s", en ? "ENABLE" : "DISABLE");
+    return ret;
 }
 
 static int paw3395_async_init_power_up(const struct device *dev) {
     int err = 0;
     const struct pixart_config *config = dev->config;
 
-    LOG_DBG("call paw3395_lib_power_up_reset()");
     err = paw3395_lib_power_up_reset(config->spi, config->cs_gpio);
     if (err) {
         LOG_ERR("Cannot exec paw3395_lib_power_up_reset");
         return -EIO;
     }
-    LOG_DBG("power up reset done");
+    LOG_INF("power up reset done");
 
     return err;
 }
@@ -137,13 +149,14 @@ static int paw3395_async_init_configure(const struct device *dev) {
     int err = 0;
     const struct pixart_config *config = dev->config;
 
-    LOG_DBG("call paw3395_lib_set_cpi()");
+    err = paw3395_set_performance(dev, true);
+
     err = paw3395_lib_set_cpi(config->spi, config->cs_gpio, config->cpi);
     if (err < 0) {
         LOG_ERR("can't set cpi");
         return err;
     }
-    LOG_DBG("set cpi done");
+    LOG_INF("set cpi done");
 
     return err;
 }
@@ -153,7 +166,7 @@ static void paw3395_async_init(struct k_work *work) {
     struct pixart_data *data = CONTAINER_OF(work_delayable, struct pixart_data, init_work);
     const struct device *dev = data->dev;
 
-    LOG_DBG("PAW3395 async init step %d", data->async_init_step);
+    LOG_INF("PAW3395 async init step %d", data->async_init_step);
 
     data->err = async_init_fn[data->async_init_step](dev);
     if (data->err) {
@@ -164,7 +177,7 @@ static void paw3395_async_init(struct k_work *work) {
         if (data->async_init_step == ASYNC_INIT_STEP_COUNT) {
             data->ready = true; // sensor is ready to work
             LOG_INF("PAW3395 initialized");
-            set_interrupt(dev, true);
+            paw3395_set_interrupt(dev, true);
         } else {
             k_work_schedule(&data->init_work, K_MSEC(async_init_delay[data->async_init_step]));
         }
@@ -201,21 +214,21 @@ static int paw3395_report_data(const struct device *dev) {
     int16_t y = ((int16_t)sys_get_le16(&buf[PAW3395_DY_POS]));
 
     if (!x && !y) {
-        // LOG_DBG("skipping zero");
+        // LOG_DBG("skip reporting zero x/y");
         return 0;
     }
 
-#ifdef PAW3395_SQUAL_POS
-    LOG_DBG("motion_burst_read, X: 0x%x 0x%x, Y: 0x%x 0x%x, %d, %d, SQ: %d", 
-        buf[PAW3395_DX_POS+1], buf[PAW3395_DX_POS],
-        buf[PAW3395_DY_POS+1], buf[PAW3395_DY_POS],
-        x, y, (uint8_t)buf[PAW3395_SQUAL_POS]);
-#else
-    LOG_DBG("motion_burst_read, X: 0x%x 0x%x, Y: 0x%x 0x%x, %d, %d",
-        buf[PAW3395_DX_POS+1], buf[PAW3395_DX_POS],
-        buf[PAW3395_DY_POS+1], buf[PAW3395_DY_POS],
-        x, y);
-#endif
+// #ifdef PAW3395_SQUAL_POS
+//     LOG_DBG("motion_burst_read, X: 0x%x 0x%x, Y: 0x%x 0x%x, %d, %d, SQ: %d", 
+//         buf[PAW3395_DX_POS+1], buf[PAW3395_DX_POS],
+//         buf[PAW3395_DY_POS+1], buf[PAW3395_DY_POS],
+//         x, y, (uint8_t)buf[PAW3395_SQUAL_POS]);
+// #else
+//     LOG_DBG("motion_burst_read, X: 0x%x 0x%x, Y: 0x%x 0x%x, %d, %d",
+//         buf[PAW3395_DX_POS+1], buf[PAW3395_DX_POS],
+//         buf[PAW3395_DY_POS+1], buf[PAW3395_DY_POS],
+//         x, y);
+// #endif
 
 #if IS_ENABLED(CONFIG_PAW3395_SWAP_XY)
     int16_t a = x;
@@ -276,7 +289,7 @@ static void paw3395_gpio_callback(const struct device *gpiob, struct gpio_callba
                                   uint32_t pins) {
     struct pixart_data *data = CONTAINER_OF(cb, struct pixart_data, irq_gpio_cb);
     const struct device *dev = data->dev;
-    set_interrupt(dev, false);
+    paw3395_set_interrupt(dev, false);
     k_work_submit(&data->trigger_work);
 }
 
@@ -284,7 +297,7 @@ static void paw3395_work_callback(struct k_work *work) {
     struct pixart_data *data = CONTAINER_OF(work, struct pixart_data, trigger_work);
     const struct device *dev = data->dev;
     paw3395_report_data(dev);
-    set_interrupt(dev, true);
+    paw3395_set_interrupt(dev, true);
 }
 
 static int paw3395_init_irq(const struct device *dev) {
@@ -391,6 +404,20 @@ static const struct sensor_driver_api paw3395_driver_api = {
     .attr_set = paw3395_attr_set,
 };
 
+// #if IS_ENABLED(CONFIG_PM_DEVICE)
+// static int paw3395_pm_action(const struct device *dev, enum pm_device_action action) {
+//     switch (action) {
+//     case PM_DEVICE_ACTION_SUSPEND:
+//         return paw3395_set_interrupt(dev, false);
+//     case PM_DEVICE_ACTION_RESUME:
+//         return paw3395_set_interrupt(dev, true);
+//     default:
+//         return -ENOTSUP;
+//     }
+// }
+// #endif // IS_ENABLED(CONFIG_PM_DEVICE)
+// PM_DEVICE_DT_INST_DEFINE(n, paw3395_pm_action);
+
 #define PAW3395_SPI_MODE (SPI_WORD_SET(8) | SPI_MODE_CPOL | SPI_MODE_CPHA | SPI_TRANSFER_MSB)
 
 #define PAW3395_DEFINE(n)                                                                          \
@@ -410,8 +437,35 @@ static const struct sensor_driver_api paw3395_driver_api = {
         .evt_type = DT_PROP(DT_DRV_INST(n), evt_type),                                             \
         .x_input_code = DT_PROP(DT_DRV_INST(n), x_input_code),                                     \
         .y_input_code = DT_PROP(DT_DRV_INST(n), y_input_code),                                     \
+        .force_awake = DT_PROP(DT_DRV_INST(n), force_awake),                                       \
     };                                                                                             \
     DEVICE_DT_INST_DEFINE(n, paw3395_init, NULL, &data##n, &config##n, POST_KERNEL,                \
                           CONFIG_INPUT_PAW3395_INIT_PRIORITY, &paw3395_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(PAW3395_DEFINE)
+
+
+#define GET_PAW3395_DEV(node_id) DEVICE_DT_GET(node_id),
+
+static const struct device *paw3395_devs[] = {
+    DT_FOREACH_STATUS_OKAY(pixart_paw3395, GET_PAW3395_DEV)
+};
+
+static int on_activity_state(const zmk_event_t *eh) {
+    struct zmk_activity_state_changed *state_ev = as_zmk_activity_state_changed(eh);
+
+    if (!state_ev) {
+        LOG_WRN("NO EVENT, leaving early");
+        return 0;
+    }
+
+    bool enable = state_ev->state == ZMK_ACTIVITY_ACTIVE ? 1 : 0;
+    for (size_t i = 0; i < ARRAY_SIZE(paw3395_devs); i++) {
+        paw3395_set_performance(paw3395_devs[i], enable);
+    }
+
+    return 0;
+}
+
+ZMK_LISTENER(zmk_paw3395_idle_sleeper, on_activity_state);
+ZMK_SUBSCRIPTION(zmk_paw3395_idle_sleeper, zmk_activity_state_changed);

@@ -1,9 +1,9 @@
-# PAW3395 driver implementation for ZMK
+# PAW3395 driver wrapper for ZMK
 
-This an **experimental** input subsystem module, that grant ability to call a non-disclosed PAW3395 core static library.
+This an input subsystem module, that grant ability to call a non-disclosed PAW3395 driver library.
 
 > [!CAUTION]
-> This module is build for nRF52840 Cortex-m4 MCU. Only tested on Xiao BLE.
+> This module is build for nRF52840 Cortex-m4 MCU. Only tested on Xiao BLE. Any register address and control value regarding to PAW3395 datasheet is not available in this module under PixArt's NDA.
 
 ## Installation
 

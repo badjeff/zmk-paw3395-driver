@@ -208,6 +208,7 @@ static int paw3395_report_data(const struct device *dev) {
     if (err) {
         return err;
     }
+    // LOG_HEXDUMP_DBG(buf, PAW3395_BURST_SIZE, "buf");
 
     // LOG_HEXDUMP_DBG(buf, sizeof(buf), "buf");
     int16_t x = ((int16_t)sys_get_le16(&buf[PAW3395_DX_POS]));
@@ -217,6 +218,7 @@ static int paw3395_report_data(const struct device *dev) {
         // LOG_DBG("skip reporting zero x/y");
         return 0;
     }
+    LOG_DBG("x/y: %d/%d", x, y);
 
 // #ifdef PAW3395_SQUAL_POS
 //     LOG_DBG("motion_burst_read, X: 0x%x 0x%x, Y: 0x%x 0x%x, %d, %d, SQ: %d", 

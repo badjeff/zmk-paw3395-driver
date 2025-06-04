@@ -66,7 +66,7 @@ Update `board.overlay` adding the necessary bits (update the pins for your board
 	  status = "okay";
 		label = "MOU0";
 		reg = <0>;
-		spi-max-frequency = <1500000>;
+		spi-max-frequency = <4000000>;
 
 		// paw3395 driver parameters
 		irq-gpios = <&gpio1 11 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;

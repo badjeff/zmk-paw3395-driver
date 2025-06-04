@@ -22,7 +22,7 @@ LOG_MODULE_REGISTER(paw3395, CONFIG_PAW3395_LOG_LEVEL);
 
 // Custom ERROR loggers for PAW3395 static library
 void paw3395_lib_log_err(const char *fmt, ...) {
-#if CONFIG_PAW3395_LOG_LEVEL >= 0
+#if CONFIG_PAW3395_LOG_LEVEL >= LOG_LEVEL_ERROR
     va_list args;
     va_start(args, fmt);
     char buf[128];
@@ -34,7 +34,7 @@ void paw3395_lib_log_err(const char *fmt, ...) {
 
 // Custom INFO loggers for PAW3395 static library
 void paw3395_lib_log_inf(const char *fmt, ...) {
-#if CONFIG_PAW3395_LOG_LEVEL >= 3
+#if CONFIG_PAW3395_LOG_LEVEL >= LOG_LEVEL_INFO
     va_list args;
     va_start(args, fmt);
     char buf[128];

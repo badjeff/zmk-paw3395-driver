@@ -24,15 +24,14 @@
 #define PAW3395_DX_POS 2
 #define PAW3395_DY_POS 4
 
-int paw3395_lib_power_up_reset(struct spi_dt_spec spi, struct gpio_dt_spec cs_gpio);
-int paw3395_lib_verify_product_id(struct spi_dt_spec spi, struct gpio_dt_spec cs_gpio);
-int paw3395_lib_power_up_init_regs(struct spi_dt_spec spi, struct gpio_dt_spec cs_gpio);
-int paw3395_lib_clear_motion_pin_state(struct spi_dt_spec spi, struct gpio_dt_spec cs_gpio);
-int paw3395_lib_motion_burst_read(struct spi_dt_spec spi, struct gpio_dt_spec cs_gpio,
-                                  uint8_t *buf, size_t burst_size);
-int paw3395_lib_set_cpi(struct spi_dt_spec spi, struct gpio_dt_spec cs_gpio, uint32_t cpi);
-int paw3395_lib_set_performance(struct spi_dt_spec spi, struct gpio_dt_spec cs_gpio, 
-                                bool enable);
+int paw3395_lib_power_up_reset(const struct spi_dt_spec *spi);
+int paw3395_lib_verify_product_id(const struct spi_dt_spec *spi);
+int paw3395_lib_power_up_init_regs(const struct spi_dt_spec *spi);
+int paw3395_lib_clear_motion_pin_state(const struct spi_dt_spec *spi);
+int paw3395_lib_motion_burst_read(const struct spi_dt_spec *spi, uint8_t *buf, size_t burst_size);
+int paw3395_lib_set_cpi(const struct spi_dt_spec *spi, uint32_t cpi);
+int paw3395_lib_set_performance(const struct spi_dt_spec *spi, bool enable);
+
 // weak linked reference logger
 extern void paw3395_lib_log_err(const char *fmt, ...);
 extern void paw3395_lib_log_inf(const char *fmt, ...);

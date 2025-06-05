@@ -81,21 +81,21 @@ static int paw3395_async_init_fw_load(const struct device *dev) {
     const struct pixart_config *config = dev->config;
 
     // verify product id before upload power-up initialization settings
-    err = paw3395_lib_verify_product_id(config->spi, config->cs_gpio);
+    err = paw3395_lib_verify_product_id(&config->spi);
     if (err) {
         LOG_ERR("Cannot exec paw3395_lib_verify_product_id");
         return -EIO;
     }
     LOG_INF("product id verified");
 
-    err = paw3395_lib_power_up_init_regs(config->spi, config->cs_gpio);
+    err = paw3395_lib_power_up_init_regs(&config->spi);
     if (err) {
         LOG_ERR("Cannot exec paw3395_lib_power_up_init_regs");
         return err;
     }
     LOG_INF("power up init regs done");
     
-    err = paw3395_lib_clear_motion_pin_state(config->spi, config->cs_gpio);
+    err = paw3395_lib_clear_motion_pin_state(&config->spi);
     if (err) {
         LOG_ERR("Cannot exec paw3395_lib_clear_motion_pin_state");
         return err;
@@ -110,7 +110,7 @@ static int paw3395_set_performance(const struct device *dev, bool enabled) {
     int err = 0;
 
     if (config->force_awake) {
-        err = paw3395_lib_set_performance(config->spi, config->cs_gpio, enabled);
+        err = paw3395_lib_set_performance(&config->spi, enabled);
         if (err) {
             LOG_ERR("Cannot exec paw3395_lib_set_performance");
             return err;
@@ -135,7 +135,7 @@ static int paw3395_async_init_power_up(const struct device *dev) {
     int err = 0;
     const struct pixart_config *config = dev->config;
 
-    err = paw3395_lib_power_up_reset(config->spi, config->cs_gpio);
+    err = paw3395_lib_power_up_reset(&config->spi);
     if (err) {
         LOG_ERR("Cannot exec paw3395_lib_power_up_reset");
         return -EIO;
@@ -151,7 +151,7 @@ static int paw3395_async_init_configure(const struct device *dev) {
 
     err = paw3395_set_performance(dev, true);
 
-    err = paw3395_lib_set_cpi(config->spi, config->cs_gpio, config->cpi);
+    err = paw3395_lib_set_cpi(&config->spi, config->cpi);
     if (err < 0) {
         LOG_ERR("can't set cpi");
         return err;
@@ -204,7 +204,7 @@ static int paw3395_report_data(const struct device *dev) {
 #endif
 
     int err = 0;
-    err = paw3395_lib_motion_burst_read(config->spi, config->cs_gpio, buf, PAW3395_BURST_SIZE);
+    err = paw3395_lib_motion_burst_read(&config->spi, buf, PAW3395_BURST_SIZE);
     if (err) {
         return err;
     }
@@ -336,23 +336,29 @@ static int paw3395_init(const struct device *dev) {
     const struct pixart_config *config = dev->config;
     int err = 0;
 
+    if (!spi_is_ready_dt(&config->spi)) {
+		LOG_ERR("%s is not ready", config->spi.bus->name);
+		return -ENODEV;
+	}
+
+    // check readiness of cs gpio pin and init it to inactive
+    const struct gpio_dt_spec cs_gpio = config->spi.config.cs.gpio;
+    if (!device_is_ready(cs_gpio.port)) {
+        LOG_ERR("SPI CS device not ready");
+        return -ENODEV;
+    }
+
+    err = gpio_pin_configure_dt(&cs_gpio, GPIO_OUTPUT_INACTIVE);
+    if (err) {
+        LOG_ERR("Cannot configure SPI CS GPIO");
+        return err;
+    }
+
     // init device pointer
     data->dev = dev;
 
     // init trigger handler work
     k_work_init(&data->trigger_work, paw3395_work_callback);
-
-    // check readiness of cs gpio pin and init it to inactive
-    if (!device_is_ready(config->cs_gpio.port)) {
-        LOG_ERR("SPI CS device not ready");
-        return -ENODEV;
-    }
-
-    err = gpio_pin_configure_dt(&config->cs_gpio, GPIO_OUTPUT_INACTIVE);
-    if (err) {
-        LOG_ERR("Cannot configure SPI CS GPIO");
-        return err;
-    }
 
     // init irq routine
     err = paw3395_init_irq(dev);
@@ -391,7 +397,7 @@ static int paw3395_attr_set(const struct device *dev, enum sensor_channel chan,
 
     switch ((uint32_t)attr) {
     case PAW3395_ATTR_CPI:
-        err = paw3395_lib_set_cpi(config->spi, config->cs_gpio, PAW3395_SVALUE_TO_CPI(*val));
+        err = paw3395_lib_set_cpi(&config->spi, PAW3395_SVALUE_TO_CPI(*val));
         break;
 
     default:
@@ -420,20 +426,13 @@ static const struct sensor_driver_api paw3395_driver_api = {
 // #endif // IS_ENABLED(CONFIG_PM_DEVICE)
 // PM_DEVICE_DT_INST_DEFINE(n, paw3395_pm_action);
 
-#define PAW3395_SPI_MODE (SPI_WORD_SET(8) | SPI_MODE_CPOL | SPI_MODE_CPHA | SPI_TRANSFER_MSB)
+#define PAW3395_SPI_MODE (SPI_WORD_SET(8) | SPI_MODE_CPOL | SPI_MODE_CPHA | SPI_TRANSFER_MSB |     \
+                          SPI_OP_MODE_MASTER | SPI_HOLD_ON_CS | SPI_LOCK_ON)
 
 #define PAW3395_DEFINE(n)                                                                          \
     static struct pixart_data data##n;                                                             \
     static const struct pixart_config config##n = {                                                \
-        .spi = {                                                                                   \
-            .bus = DEVICE_DT_GET(DT_INST_BUS(n)),                                                  \
-            .config = {                                                                            \
-                .frequency = DT_INST_PROP(n, spi_max_frequency),                                   \
-                .operation = PAW3395_SPI_MODE,                                                     \
-                .slave = DT_INST_REG_ADDR(n),                                                      \
-             },                                                                                    \
-        },                                                                                         \
-        .cs_gpio = SPI_CS_GPIOS_DT_SPEC_GET(DT_DRV_INST(n)),                                       \
+        .spi = SPI_DT_SPEC_INST_GET(n, PAW3395_SPI_MODE, 0),                                       \
         .irq_gpio = GPIO_DT_SPEC_INST_GET(n, irq_gpios),                                           \
         .cpi = DT_PROP(DT_DRV_INST(n), cpi),                                                       \
         .evt_type = DT_PROP(DT_DRV_INST(n), evt_type),                                             \

@@ -2,6 +2,8 @@
 
 This is an [ZMK](https://zmk.dev) pointer input module, that grant ability to call a non-disclosed PAW3395 driver library.
 
+This driver had been tested on [my PAW3395 breakout board](https://github.com/badjeff/paw3395-pcb).
+
 > [!CAUTION]
 > This module is build for nRF52840 Cortex-m4 MCU. Only tested on Xiao BLE. Any register address and control value regarding to PAW3395 datasheet is not available in this module under PixArt's NDA.
 

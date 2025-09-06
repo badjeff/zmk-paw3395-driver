@@ -30,6 +30,7 @@ int paw3395_lib_power_up_init_regs(const struct spi_dt_spec *spi);
 int paw3395_lib_clear_motion_pin_state(const struct spi_dt_spec *spi);
 int paw3395_lib_motion_burst_read(const struct spi_dt_spec *spi, uint8_t *buf, size_t burst_size);
 int paw3395_lib_set_cpi(const struct spi_dt_spec *spi, uint32_t cpi);
+int paw3395_lib_set_axis(const struct spi_dt_spec *spi, bool swap_xy, bool inv_x, bool inv_y);
 int paw3395_lib_set_performance(const struct spi_dt_spec *spi, bool enable);
 
 // weak linked reference logger

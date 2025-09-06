@@ -73,6 +73,9 @@ Update `board.overlay` adding the necessary bits (update the pins for your board
 		// paw3395 driver parameters
 		irq-gpios = <&gpio1 11 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 		cpi = <600>;
+		// swap-xy; /* optional */
+		// invert-x; /* optional */
+		// invert-y; /* optional */
 		evt-type = <INPUT_EV_REL>;
 		x-input-code = <INPUT_REL_X>;
 		y-input-code = <INPUT_REL_Y>;
@@ -94,9 +97,9 @@ CONFIG_SPI=y
 CONFIG_INPUT=y
 CONFIG_ZMK_POINTING=y
 CONFIG_PAW3395=y
-# CONFIG_PAW3395_SWAP_XY=y
-# CONFIG_PAW3395_INVERT_X=y
-# CONFIG_PAW3395_INVERT_Y=y
+# CONFIG_PAW3395_SWAP_XY=y // <-- deprecated, use swap-xy; instead
+# CONFIG_PAW3395_INVERT_X=y // <-- deprecated, use swap-xy; instead
+# CONFIG_PAW3395_INVERT_Y=y // <-- deprecated, use swap-xy; instead
 # CONFIG_PAW3395_REPORT_INTERVAL_MIN=12
 # CONFIG_PAW3395_LOG_LEVEL_DBG=y
 # CONFIG_PAW3395_INIT_POWER_UP_EXTRA_DELAY_MS=3000

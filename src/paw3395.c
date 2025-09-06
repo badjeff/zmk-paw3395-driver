@@ -158,6 +158,25 @@ static int paw3395_async_init_configure(const struct device *dev) {
     }
     LOG_INF("set cpi done");
 
+    bool swap_xy = config->swap_xy;
+    bool inv_x = config->inv_x;
+    bool inv_y = config->inv_y;
+#if IS_ENABLED(CONFIG_PAW3395_SWAP_XY)
+    swap_xy = true;
+#endif
+#if IS_ENABLED(CONFIG_PAW3395_INVERT_X)
+    inv_x = true;
+#endif
+#if IS_ENABLED(CONFIG_PAW3395_INVERT_Y)
+    inv_y = true;
+#endif
+    err = paw3395_lib_set_axis(&config->spi, swap_xy, inv_x, inv_y);
+    if (err < 0) {
+        LOG_ERR("can't set asix");
+        return err;
+    }
+    LOG_INF("set asix done");
+
     return err;
 }
 
@@ -231,18 +250,6 @@ static int paw3395_report_data(const struct device *dev) {
 //         buf[PAW3395_DY_POS+1], buf[PAW3395_DY_POS],
 //         x, y);
 // #endif
-
-#if IS_ENABLED(CONFIG_PAW3395_SWAP_XY)
-    int16_t a = x;
-    x = y;
-    y = a;
-#endif
-#if IS_ENABLED(CONFIG_PAW3395_INVERT_X)
-    x = -x;
-#endif
-#if IS_ENABLED(CONFIG_PAW3395_INVERT_Y)
-    y = -y;
-#endif
 
 #if CONFIG_PAW3395_REPORT_INTERVAL_MIN > 0
     // purge accumulated delta, if last sampled had not been reported on last report tick
@@ -435,6 +442,9 @@ static const struct sensor_driver_api paw3395_driver_api = {
         .spi = SPI_DT_SPEC_INST_GET(n, PAW3395_SPI_MODE, 0),                                       \
         .irq_gpio = GPIO_DT_SPEC_INST_GET(n, irq_gpios),                                           \
         .cpi = DT_PROP(DT_DRV_INST(n), cpi),                                                       \
+        .swap_xy = DT_PROP(DT_DRV_INST(n), swap_xy),                                               \
+        .inv_x = DT_PROP(DT_DRV_INST(n), invert_x),                                                \
+        .inv_y = DT_PROP(DT_DRV_INST(n), invert_y),                                                \
         .evt_type = DT_PROP(DT_DRV_INST(n), evt_type),                                             \
         .x_input_code = DT_PROP(DT_DRV_INST(n), x_input_code),                                     \
         .y_input_code = DT_PROP(DT_DRV_INST(n), y_input_code),                                     \

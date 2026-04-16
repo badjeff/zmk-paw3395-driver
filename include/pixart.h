@@ -18,6 +18,12 @@ extern "C" {
 /* device data structure */
 struct pixart_data {
     const struct device          *dev;
+    int64_t                      dx;
+    int64_t                      dy;
+#if CONFIG_PAW3395_REPORT_INTERVAL_MIN > 0
+    int64_t                      last_smp_time;
+    int64_t                      last_rpt_time;
+#endif
     bool                         sw_smart_flag; // for paw3395 smart algorithm
 
     struct gpio_callback         irq_gpio_cb; // motion pin irq callback

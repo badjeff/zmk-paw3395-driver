@@ -213,12 +213,7 @@ static int paw3395_report_data(const struct device *dev) {
         return -EBUSY;
     }
 
-    static int64_t dx = 0;
-    static int64_t dy = 0;
-
 #if CONFIG_PAW3395_REPORT_INTERVAL_MIN > 0
-    static int64_t last_smp_time = 0;
-    static int64_t last_rpt_time = 0;
     int64_t now = k_uptime_get();
 #endif
 
@@ -253,36 +248,36 @@ static int paw3395_report_data(const struct device *dev) {
 
 #if CONFIG_PAW3395_REPORT_INTERVAL_MIN > 0
     // purge accumulated delta, if last sampled had not been reported on last report tick
-    if (now - last_smp_time >= CONFIG_PAW3395_REPORT_INTERVAL_MIN) {
-        dx = 0;
-        dy = 0;
+    if (now - data->last_smp_time >= CONFIG_PAW3395_REPORT_INTERVAL_MIN) {
+        data->dx = 0;
+        data->dy = 0;
     }
-    last_smp_time = now;
+    data->last_smp_time = now;
 #endif
 
     // accumulate delta until report in next iteration
-    dx += x;
-    dy += y;
+    data->dx += x;
+    data->dy += y;
 
 #if CONFIG_PAW3395_REPORT_INTERVAL_MIN > 0
     // strict to report inerval
-    if (now - last_rpt_time < CONFIG_PAW3395_REPORT_INTERVAL_MIN) {
+    if (now - data->last_rpt_time < CONFIG_PAW3395_REPORT_INTERVAL_MIN) {
         return 0;
     }
 #endif
 
     // divide to report value
-    int16_t rx = (int16_t)CLAMP(dx, INT16_MIN, INT16_MAX);
-    int16_t ry = (int16_t)CLAMP(dy, INT16_MIN, INT16_MAX);
+    int16_t rx = (int16_t)CLAMP(data->dx, INT16_MIN, INT16_MAX);
+    int16_t ry = (int16_t)CLAMP(data->dy, INT16_MIN, INT16_MAX);
     bool have_x = rx != 0;
     bool have_y = ry != 0;
 
     if (have_x || have_y) {
 #if CONFIG_PAW3395_REPORT_INTERVAL_MIN > 0
-        last_rpt_time = now;
+        data->last_rpt_time = now;
 #endif
-        dx = 0;
-        dy = 0;
+        data->dx = 0;
+        data->dy = 0;
         if (have_x) {
             input_report(dev, config->evt_type, config->x_input_code, rx, !have_y, K_NO_WAIT);
         }
@@ -363,6 +358,12 @@ static int paw3395_init(const struct device *dev) {
 
     // init device pointer
     data->dev = dev;
+    data->dx = 0;
+    data->dy = 0;
+#if CONFIG_PAW3395_REPORT_INTERVAL_MIN > 0
+    data->last_smp_time = 0;
+    data->last_rpt_time = 0;
+#endif
 
     // init trigger handler work
     k_work_init(&data->trigger_work, paw3395_work_callback);

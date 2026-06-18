@@ -149,6 +149,16 @@ static int paw3395_async_init_configure(const struct device *dev) {
     int err = 0;
     const struct pixart_config *config = dev->config;
 
+    err = paw3395_lib_set_op_mode_high_performance(&config->spi);
+    // err = paw3395_lib_set_op_mode_low_power(&config->spi);
+    // err = paw3395_lib_set_op_mode_office(&config->spi);
+    // err = paw3395_lib_set_op_mode_corded_gaming(&config->spi);
+    if (err < 0) {
+        LOG_ERR("can't set op mode");
+        return err;
+    }
+    LOG_INF("set op mode done");
+
     err = paw3395_set_performance(dev, true);
 
     err = paw3395_lib_set_cpi(&config->spi, config->cpi);

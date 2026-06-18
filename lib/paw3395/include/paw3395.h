@@ -32,6 +32,10 @@ int paw3395_lib_motion_burst_read(const struct spi_dt_spec *spi, uint8_t *buf, s
 int paw3395_lib_set_cpi(const struct spi_dt_spec *spi, uint32_t cpi);
 int paw3395_lib_set_axis(const struct spi_dt_spec *spi, bool swap_xy, bool inv_x, bool inv_y);
 int paw3395_lib_set_performance(const struct spi_dt_spec *spi, bool enable);
+int paw3395_lib_set_op_mode_high_performance(const struct spi_dt_spec *spi);
+int paw3395_lib_set_op_mode_low_power(const struct spi_dt_spec *spi);
+int paw3395_lib_set_op_mode_office(const struct spi_dt_spec *spi);
+int paw3395_lib_set_op_mode_corded_gaming(const struct spi_dt_spec *spi);
 
 // weak linked reference logger
 extern void paw3395_lib_log_err(const char *fmt, ...);
